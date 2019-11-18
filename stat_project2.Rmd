@@ -1,0 +1,254 @@
+---
+title: "Stat6021_Project2"
+author: "Group 5"
+date: "11/12/2019"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r}
+## store data file with the variable name data
+## data cleaning
+## import library 
+library(stringr)
+library(ggplot2)
+library(dplyr)
+library(ROCR)
+library(boot)
+library(extrafont)
+library(ggthemes)
+data<-read.csv("adult.csv", header=FALSE ,sep=",", na.string = "?")
+#str_replace(data, "-", ".")
+nr<-nrow(data)
+df<-data.frame(data)
+df = df[-1,] # row 1, sex has unwanted lable
+df[1, 1] <-39
+df<- na.omit(df)
+row.names(df) <- 1:nrow(df)
+data<-df
+
+```
+
+
+```{r}
+colnames(data)<-c("age","workclass", "fnlwgt", "education", "education_num", "marital_status", "occupation", "relationship", "race", "sex", "capital_gain", "capital_loss", "hours_per_week", "native_country", "income")
+attach(data)
+#data
+ 
+#remoce missing data
+data <- na.omit(data)
+```
+
+```{r}
+is.numeric(age)
+age <-as.numeric(age)
+is.numeric(age)
+is.numeric(fnlwgt)
+is.numeric(education_num)
+is.numeric(capital_gain)
+is.numeric(capital_loss)
+is.numeric(hours_per_week)
+
+```
+
+```{r}
+#Use box plot to see each predictor vs. income
+##############
+par(mfrow=c(1,3))
+boxplot(age~income)
+boxplot(fnlwgt~income)
+
+###############
+boxplot(education_num~income)
+
+###############
+
+boxplot(capital_gain~income)
+boxplot(capital_loss~income)
+###############
+boxplot(hours_per_week~income)
+
+###############
+
+```
+
+```{r}
+theme_set(theme_classic())
+
+# Histogram on a Categorical variable
+g <- ggplot(data, aes(age))
+g + geom_bar(aes(fill=income), width = 0.5) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="Histogram on Categorical Variable", 
+       subtitle="Income across Age") 
+```
+
+
+```{r}
+theme_set(theme_classic())
+
+# Histogram on a Categorical variable
+g <- ggplot(data, aes(sex))
+g + geom_bar(aes(fill=income), width = 0.5) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="Histogram on Categorical Variable", 
+       subtitle="Income across Age")
+
+```
+
+```{r}
+data$education <- trimws(data$education) 
+```
+
+
+
+```{r}
+summary(data$education)
+```
+
+
+```{r}
+###combine high school below or 12th together 
+data$education <-gsub('^12th', 'beforeHS', data$education)
+data$education <-gsub('^10th', 'beforeHS', data$education)
+data$education <-gsub('^11th', 'beforeHS', data$education)
+data$education <-gsub('^1st-4th', 'beforeHS', data$education)
+data$education <-gsub('^5th-6th', 'beforeHS', data$education)
+data$education <-gsub('^7th-8th', 'beforeHS', data$education)
+data$education <-gsub('^9th', 'beforeHS', data$education)
+data$education <-gsub('^Preschool', 'beforeHS', data$education)
+data$education<-as.factor(data$education)
+```
+
+
+```{r}
+summary(data$education)
+```
+
+```{r}
+theme_set(theme_classic())
+
+# Histogram on a Categorical variable
+g <- ggplot(data, aes(education))
+g + geom_bar(aes(fill=income), width = 0.5) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="Histogram on Categorical Variable", 
+       subtitle="Income across education")
+```
+
+
+```{r}
+summary(data$workclass)
+```
+
+```{r}
+data$workclass <- trimws(data$workclass) 
+```
+
+```{r}
+levels(data$workclass)[1] <- 'Unknown'
+
+# combine into Sele-Employed job
+data$workclass <- gsub('^Self-emp-inc', 'Self-Employed', data$workclass)
+data$workclass <- gsub('^Self-emp-not-inc', 'Self-Employed', data$workclass)
+
+# combine into Other/Unknown
+data$workclass <- gsub('^Never-worked', 'Other', data$workclass)
+data$workclass <- gsub('^Without-pay', 'Other', data$workclass)
+data$workclass <- gsub('^Other', 'Others', data$workclass)
+data$workclass <- gsub('^Unknown', 'Other', data$workclass)
+
+# combine into Government job
+data$workclass <- gsub('^Federal-gov', 'Government', data$workclass)
+data$workclass <- gsub('^Local-gov', 'Government', data$workclass)
+data$workclass <- gsub('^State-gov', 'Government', data$workclass) 
+ 
+
+data$workclass <- as.factor(data$workclass)
+```
+
+
+```{r}
+data <- na.omit(data)
+```
+
+```{r}
+data$workclass <- gsub('[[:punct:]]', 'Other', data$workclass)
+data$workclass <- as.factor(data$workclass)
+```
+
+
+```{r}
+summary(data$workclass)
+```
+```{r}
+theme_set(theme_classic())
+
+# Histogram on a Categorical variable
+g <- ggplot(data, aes(race))
+g + geom_bar(aes(fill=income), width = 0.5) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="Histogram on Categorical Variable", 
+       subtitle="Income across education")
+```
+
+```{r}
+summary(data$marital_status)
+```
+
+
+```{r}
+theme_set(theme_classic())
+
+# Histogram on a Categorical variable
+g <- ggplot(data, aes(marital_status))
+g + geom_bar(aes(fill=income), width = 0.5) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="Histogram on Categorical Variable", 
+       subtitle="Income across education")
+```
+```{r}
+theme_set(theme_classic())
+
+# Histogram on a Categorical variable
+g <- ggplot(data, aes(relationship))
+g + geom_bar(aes(fill=income), width = 0.5) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="Histogram on Categorical Variable", 
+       subtitle="Income across education")
+```
+
+```{r}
+data$native_country <- trimws(data$native_country) 
+summary(data$native_country)
+```
+```{r}
+#Need to delete Outlying-US(Guam-USVI-etc)   
+data$native_country <- as.factor(data$native_country)
+```
+
+```{r}
+summary(data$native_country)
+```
+```{r}
+data <- na.omit(data)
+```
+
+```{r}
+data$native_country <- as.factor(data$native_country)
+```
+
+
+```{r}
+theme_set(theme_classic())
+
+# Histogram on a Categorical variable
+g <- ggplot(data, aes(native_country))
+g + geom_bar(aes(fill=income), width = 0.5) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="Histogram on Categorical Variable", 
+       subtitle="Income across education")
+```
+```
+
