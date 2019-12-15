@@ -1,0 +1,1370 @@
+---
+title: "Stat_projectReadtxt_1115"
+author: "Group 5"
+date: "11/15/2019"
+output:
+  word_document: default
+  html_document: default
+---
+## The procedures for analyzing data include (1) data cleaning and manipulation(2) first model (3)test hypothesis (4) multicollinearity (5)second model (6) model evaluation and (7)conclusions. 
+
+```{r}
+##(1) data cleaning and manipulation
+## store data file with the variable name data
+## data cleaning
+## import library 
+library(stringr)
+library(ggplot2)
+library(dplyr)
+library(ROCR)
+library(boot)
+library(extrafont)
+library(ggthemes)
+library(ROCR)
+library(caret)
+library(plyr)
+```
+## read data in
+```{r}
+##(1) data cleaning and manipulation
+##read in data
+adult <- read.table("adult.data", sep = ",", header = FALSE)
+```
+## check data dimension
+```{r}
+##(1) data cleaning and manipulation
+###check dimension of adult
+dim(adult)[1]
+dim(adult)[2]
+```
+## (1) data cleaning and manipulation
+## handle missing data and add header in 
+```{r}
+##(1) data cleaning and manipulation
+## handle missing data and add header in 
+adult <- read.table("adult.data",
+                       sep = ",", 
+                       header = FALSE, 
+                       na.strings = " ?")
+
+
+colnames(adult) <- c("age", "wc", "wgt", 
+                        "edu", "edu_num", 
+                        "marital", "occup",
+                        "rp", "race", "sex", 
+                        "c_gain", "c_loss", 
+                        "hours_w", "nc", "income")
+```
+## (1) data cleaning and manipulation
+## check data set
+```{r}
+##(1) data cleaning and manipulation
+## check hander and check data
+# adult
+```
+## (1) data cleaning and manipulation
+## omit NA data
+```{r}
+##(1) data cleaning and manipulation
+#Remove all na value
+adult <- na.omit(adult)
+```
+## (1) data cleaning and manipulation
+## check data dimension after removing NA data 
+```{r}
+##(1) data cleaning and manipulation
+##check dimension after remove na
+dim(adult)[1]
+dim(adult)[2]
+row.names(adult) <- 1:nrow(adult)
+```
+## (1) data cleaning and manipulation
+```{r}
+data<-adult
+```
+## (1) data cleaning and manipulation
+## Attach data
+```{r}
+##(1) data cleaning and manipulation
+attach(data)
+#data
+```
+## (1) data cleaning and manipulation
+## start to check six numerical variables and eight categorical variables
+```{r}
+##(1) data cleaning and manipulation
+## check six numerical variable
+#Use box plot to see each numerical predictors vs. income (Figures 1 and 2)
+##############
+par(mfrow=c(1,3))
+is.numeric(age)
+boxplot(age~income)
+boxplot(wgt~income)
+
+###############
+boxplot(edu_num~income)
+
+###############
+boxplot(c_gain~income)
+boxplot(c_loss~income)
+###############
+boxplot(hours_w~income)
+
+###############
+```
+## (1) data cleaning and manipulation
+## age effect understanding
+```{r}
+##(1) data cleaning and manipulation
+##Check age histogram colored by 
+library(plyr)
+mu <- ddply(data, "income", summarise, grp.mean=mean(age))
+head(mu)
+# Change histogram plot fill colors by groups
+ggplot(data, aes(x=age, fill=income, color=income)) +
+  geom_histogram(position="identity")
+# Use semi-transparent fill
+p<-ggplot(data, aes(x=age, fill=income, color=income)) +
+  geom_histogram(position="identity", alpha=0.5)
+p
+# Add mean lines
+p+geom_vline(data=mu, aes(xintercept=grp.mean, color=income),
+             linetype="dashed")
+p+theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="Histogram on Categorical Variable", 
+       subtitle="Income across Age") 
+```
+## (1) data cleaning and manipulation
+## capital-gain and capital-loss quantile checking
+```{r}
+##(1) data cleaning and manipulation
+###many zero in capital_gain and capital_loss
+summary(data$c_gain)
+summary(data$c_loss)
+```
+## (1) data cleaning and manipulation
+## check zero counts of capital-gain
+```{r}
+##(1) data cleaning and manipulation
+sum(data$c_gain == 0)/length(data$c_gain)
+```
+## (1) data cleaning and manipulation
+## check zero counts of capital-loss
+```{r}
+##(1) data cleaning and manipulation
+sum(data$c_loss == 0)/length(data$c_loss)
+```
+## (1) data cleaning and manipulation
+## check non-zero of capital-gain
+```{r}
+##(1) data cleaning and manipulation
+###check capital_gain > 0 histogram distribution
+df <- data[data$c_gain > 0, ]
+
+ggplot(data = df, 
+       aes(x = df$c_gain)) +
+  geom_histogram(binwidth = 5000,
+                 colour = "black",
+                 fill = "orange",
+                 alpha = 0.4) +
+  scale_y_continuous(breaks = seq(0, 4000, 100)) +
+  labs(x = "Capital gain", y = "Count") +
+  ggtitle("Histogram of Nonzero Capital Gain") 
+```
+## (1) data cleaning and manipulation
+## check non-zero of capital-loss
+```{r}
+##(1) data cleaning and manipulation
+###check capital_loss >0 histogram distribution
+df <- data[data$c_loss > 0, ]
+
+ggplot(data = df, 
+       aes(x = df$c_loss)) +
+  geom_histogram(binwidth = 100,
+                 colour = "black",
+                 fill = "orange",
+                 alpha = 0.4) +
+  scale_y_continuous(breaks = seq(0, 4000, 100)) +
+  labs(x = "Capital loss", y = "Count") +
+  ggtitle("Histogram of Nonzero Capital loss")
+```
+## (1) data cleaning and manipulation
+## broaden classess 
+```{r}
+##(1) data cleaning and manipulation
+#Before broaden education
+theme_set(theme_classic())
+
+# Histogram on a Categorical variable
+g <- ggplot(data, aes(edu))
+g + geom_bar(aes(fill=income), width = 0.5) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="Before broadening class", 
+       subtitle="Income across education")
+```
+## (1) data cleaning and manipulation
+## check classes of education before broadening
+```{r}
+##(1) data cleaning and manipulation
+##summarize the classes of education
+summary(data$edu)
+```
+## (1) data cleaning and manipulation
+## trim space 
+```{r}
+##(1) data cleaning and manipulation
+###trim space
+data$edu <- trimws(data$edu) 
+```
+## (1) data cleaning and manipulation
+## use gsub() to group class
+```{r}
+##(1) data cleaning and manipulation
+###combine high school below or 12th together 
+data$edu <-gsub('^12th', '<HS', data$edu)
+data$edu <-gsub('^10th', '<HS', data$edu)
+data$edu <-gsub('^11th', '<HS', data$edu)
+data$edu <-gsub('^1st-4th', '<HS', data$edu)
+data$edu <-gsub('^5th-6th', '<HS', data$edu)
+data$edu <-gsub('^7th-8th', '<HS', data$edu)
+data$edu <-gsub('^9th', '<HS', data$edu)
+data$edu <-gsub('^Preschool', '<HS', data$edu)
+data$edu <-gsub('^Assoc-acdm', 'Assoc', data$edu)
+data$edu <-gsub('^Assoc-voc', 'Assoc', data$edu)
+data$edu <-as.factor(data$edu)
+```
+## (1) data cleaning and manipulation
+## check classes after broadening
+```{r}
+##(1) data cleaning and manipulation
+summary(data$edu)
+```
+## (1) data cleaning and manipulation
+## check the plot after broadening 
+```{r}
+##(1) data cleaning and manipulation
+#after broaden education
+theme_set(theme_classic())
+
+# Histogram on a Categorical variable
+g <- ggplot(data, aes(edu))
+g + geom_bar(aes(fill=income), width = 0.5) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="After broadening class", 
+       subtitle="Income across education after class broden")
+```
+## (1) data cleaning and manipulation
+## check work class before broadening 
+```{r}
+##(1) data cleaning and manipulation
+###before broaden work class
+theme_set(theme_classic())
+
+# Histogram on a Categorical variable
+g <- ggplot(data, aes(wc))
+g + geom_bar(aes(fill=income), width = 0.5) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="Before broadening workclass", 
+       subtitle="Income across workclass")
+```
+## summary of workclass before broadening
+
+```{r}
+##(1) data cleaning and manipulation
+summary(data$wc)
+```
+## trim space 
+```{r}
+##(1) data cleaning and manipulation
+data$wc <- trimws(data$wc) 
+```
+## broadening work class based on government, other and self-employed 
+```{r}
+##(1) data cleaning and manipulation
+levels(data$wc)[1] <- 'Unknown'
+
+# combine into Sele-Employed job
+data$wc <- gsub('^Self-emp-inc', 'Self-Employed', data$wc)
+data$wc <- gsub('^Self-emp-not-inc', 'Self-Employed', data$wc)
+
+# combine into Other/Unknown
+data$wc <- gsub('^Never-worked', 'Other', data$wc)
+data$wc <- gsub('^Without-pay', 'Other', data$wc)
+data$wc <- gsub('^Other', 'Others', data$wc)
+data$wc <- gsub('^Unknown', 'Other', data$wc)
+
+# combine into Government job
+data$wc <- gsub('^Federal-gov', 'Government', data$wc)
+data$wc <- gsub('^Local-gov', 'Government', data$wc)
+data$wc <- gsub('^State-gov', 'Government', data$wc)
+```
+## factor workclass
+```{r}
+##(1) data cleaning and manipulation
+data$wc <- as.factor(data$wc)
+```
+## check classes after broadening 
+```{r}
+##(1) data cleaning and manipulation
+summary(data$wc)
+```
+## check bar plot after broadening
+```{r}
+##(1) data cleaning and manipulation
+theme_set(theme_classic())
+
+# Histogram on a Categorical variable
+g <- ggplot(data, aes(wc))
+g + geom_bar(aes(fill=income), width = 0.5) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="After broadening class", 
+       subtitle="Income across education")
+```
+## occupation before broadening 
+```{r}
+##(1) data cleaning and manipulation
+#before broadening class
+theme_set(theme_classic())
+
+# Histogram on a Categorical variable
+g <- ggplot(data, aes(occup))
+g + geom_bar(aes(fill=income), width = 0.5) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="Before broadening class", 
+       subtitle="Income across occupation")
+```
+## check summary of occupation before broadening 
+```{r}
+##(1) data cleaning and manipulation
+summary(data$occup)
+```
+## group the occupation such as blue-collar or white-collar, etc
+```{r}
+##(1) data cleaning and manipulation
+data$occup <- trimws(data$occup) 
+data$occup <- gsub('^Adm-clerical','Administrator',data$occup)
+data$occup <- gsub('^Armed-Forces','Military',data$occup)
+data$occup <- gsub('^Craft-repair','Blue-Collar',data$occup)
+data$occup <- gsub('^Exec-managerial','White-Collar',data$occup)
+data$occup <- gsub('^Farming-fishing','Blue-Collar',data$occup)
+data$occup <- gsub('^Handlers-cleaners','Blue-Collar',data$occup)
+data$occup <- gsub('^Machine-op-inspct','Blue-Collar',data$occup)
+data$occup <- gsub('^Other-service','Service',data$occup)
+data$occup <- gsub('^Priv-house-serv','Service',data$occup)
+data$occup <- gsub('^Prof-specialty','Professional',data$occup)
+data$occup <- gsub('^Protective-serv','Other-Occup',data$occup)
+data$occup <- gsub('^Sales','Sales',data$occup)
+data$occup <- gsub('^Tech-support','Other-Occup',data$occup)
+data$occup <- gsub('^Transport-moving','Blue-Collar',data$occup)
+data$occup <-as.factor(data$occup)
+```
+## check the classes after broadening 
+```{r}
+##(1) data cleaning and manipulation
+summary(data$occup)
+```
+## check bar plot after broadening 
+```{r}
+##(1) data cleaning and manipulation
+theme_set(theme_classic())
+
+# Histogram on a Categorical variable
+g <- ggplot(data, aes(occup))
+g + geom_bar(aes(fill=income), width = 0.5) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="After broadening class", 
+       subtitle="Income across occupation")
+```
+## check the class before broadening 
+```{r}
+##(1) data cleaning and manipulation
+###before broadening class
+theme_set(theme_classic())
+
+# Histogram on a Categorical variable
+g <- ggplot(data, aes(nc))
+g + geom_bar(aes(fill=income), width = 0.5) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="Before broadening class", 
+       subtitle="Income across native country")
+```
+## group countries based on geo location
+```{r}
+##(1) data cleaning and manipulation
+Asia_East <- c(" Cambodia", " China", " Hong", " Laos", " Thailand",
+               " Japan", " Taiwan", " Vietnam")
+
+Asia_Central <- c(" India", " Iran")
+
+Central_America <- c(" Cuba", " Guatemala", " Jamaica", " Nicaragua", 
+                     " Puerto-Rico",  " Dominican-Republic", " El-Salvador", 
+                     " Haiti", " Honduras", " Mexico", " Trinadad&Tobago")
+
+South_America <- c(" Ecuador", " Peru", " Columbia")
+
+
+Europe_West <- c(" England", " Germany", " Holand-Netherlands", " Ireland", 
+                 " France", " Greece", " Italy", " Portugal", " Scotland")
+
+Europe_East <- c(" Poland", " Yugoslavia", " Hungary")
+```
+## mutate to the column as nc
+```{r}
+##(1) data cleaning and manipulation
+data <- mutate(data, 
+       nc = ifelse(nc %in% Asia_East, " East-Asia",
+                ifelse(nc %in% Asia_Central, " Central-Asia",
+                ifelse(nc %in% Central_America, " Central-America",
+                ifelse(nc %in% South_America, " South-America",
+                ifelse(nc %in% Europe_West, " Europe-West",
+                ifelse(nc %in% Europe_East, " Europe-East",
+                ifelse(nc == " United-States", " United-States", 
+                       " Outlying-US" ))))))))
+data$nc <-as.factor(data$nc)
+```
+## factor native country 
+```{r}
+##(1) data cleaning and manipulation
+data$nc <- factor(data$nc, ordered = FALSE)
+```
+## summary of data after broadening 
+```{r}
+##(1) data cleaning and manipulation
+summary(data$nc)
+```
+## check the plot after broadening 
+```{r}
+##(1) data cleaning and manipulation
+theme_set(theme_classic())
+
+# Histogram on a Categorical variable
+g <- ggplot(data, aes(nc))
+g + geom_bar(aes(fill=income), width = 0.5) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="After broadening class", 
+       subtitle="Income across native country")
+```
+## broaden the class of marital 
+```{r}
+##(1) data cleaning and manipulation
+###before brodening class: martial_status
+theme_set(theme_classic())
+
+# Histogram on a Categorical variable
+g <- ggplot(data, aes(marital))
+g + geom_bar(aes(fill=income), width = 0.5) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="Before broadening class", 
+       subtitle="Income across Marital_status")
+```
+## check summary of marital 
+```{r}
+##(1) data cleaning and manipulation
+summary(data$marital)
+```
+## trim space 
+```{r}
+##(1) data cleaning and manipulation
+data$marital <- trimws(data$marital) 
+```
+## broadening the classes 
+```{r}
+##(1) data cleaning and manipulation
+# combine same group into martial status -group married
+data$marital <- gsub('^Married-AF-spouse', 'Married', data$marital)
+data$marital <- gsub('^Married-civ-spouse', 'Married', data$marital)
+data$marital <- gsub('^Married-spouse-absent', 'Married', data$marital)
+###change to a short name
+data$marital <- gsub('^Never-married', 'single', data$marital)
+data$marital <-as.factor(data$marital)
+```
+## check summary after broadening 
+```{r}
+##(1) data cleaning and manipulation
+summary(data$marital)
+```
+## check the bar plot after broadening 
+```{r}
+##(1) data cleaning and manipulation
+theme_set(theme_classic())
+
+# Histogram on a Categorical variable
+g <- ggplot(data, aes(marital))
+g + geom_bar(aes(fill=income), width = 0.5) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="After broadening class", 
+       subtitle="Income across Marital_status")
+```
+## check relationship - no change. Undestand the Husband/Wife people have more income > 50K
+```{r}
+##(1) data cleaning and manipulation
+theme_set(theme_classic())
+
+# Histogram on a Categorical variable
+g <- ggplot(data, aes(rp))
+g + geom_bar(aes(fill=income), width = 0.5) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="Relationship", 
+       subtitle="Income across Relationship")
+```
+## Check race- no change. Understand White has greater $50K income
+```{r}
+##(1) data cleaning and manipulation
+theme_set(theme_classic())
+
+# Histogram on a Categorical variable
+g <- ggplot(data, aes(race))
+g + geom_bar(aes(fill=income), width = 0.5) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="Race", 
+       subtitle="Income across Race")
+```
+## chekc Sex and no change. Understand male has greater $50K than female
+```{r}
+##(1) data cleaning and manipulation
+##sex
+theme_set(theme_classic())
+
+# Histogram on a Categorical variable
+g <- ggplot(data, aes(sex))
+g + geom_bar(aes(fill=income), width = 0.5) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="Sex", 
+       subtitle="Income across sex")
+```
+##finish checking all numerical and categorical variables
+```{r}
+##(1) data cleaning and manipulation
+attach(data)
+```
+## check dimension again 
+```{r}
+##(1) data cleaning and manipulation
+dim(data)[1]
+```
+## null capital-gain, capital-loss due to skewed data
+```{r}
+##(1) data cleaning and manipulation
+data$c_gain <- NULL
+data$c_loss <- NULL
+attach(data)
+```
+## check the dimension of data again
+```{r}
+##(1) data cleaning and manipulation
+dim(data)[2]
+```
+## check level 
+```{r}
+##(1) data cleaning and manipulation
+##check coding scheme
+contrasts(income)
+```
+## drop capital-gain, capital-loss, native-country and fnlwgt. The predictors(14) reduced to predictors (10)
+# First Model 
+```{r}
+## (2) first model 
+###drop c_gain, c_loss, nc, and wgt for regression - first model
+m2 <- glm(income ~age+wc+edu_num+occup+sex+hours_w+ edu +rp + marital + race, family = "binomial", data = data)
+summary(m2)
+```
+# First model
+## A few interpretations:
+```{r}
+## (2) first model
+# consider age effect
+## logodds to 0.028390* age
+## estimated odds 
+exp(0.028390)
+```
+
+# Considering a male at age 40 years old with workclass = government, education number= 16 y, occupation is White-Collar, hours-per-week is 40 hrs, education is Doctoral, relationship is Wife, maritial status is married, race is White
+```{r}
+## (2) first model 
+#calculate estimate odds for age while holding all other predictors constant
+
+logodds = -7.14719+0.02839* 40 + 0 + 0.2132*16 + 0.8062 + 0.8968 + 0.02912*40 + 0.9703 + 1.3258 + 0.5728 + 0.5270
+logodds
+estimatedodds = exp(logodds)
+prob = estimatedodds/(1+estimatedodds)
+prob
+
+```
+## First model - machine learning
+```{r}
+###apply ML train/test for first model
+##set the random number generator so same results can be reproduced
+set.seed(2019)
+##choose the observations to be in the training. I am splitting the dataset into halves
+sample<-sample.int(nrow(data), floor(.50*nrow(data)), replace = F)
+train<-data[sample, ]
+test<-data[-sample, ]
+##use training data to fit logistic regression model with 10 predictors
+result<-glm(income ~age+wc+edu_num+occup+sex+hours_w+ edu +rp + marital + race, family = "binomial", data = train)
+library(ROCR)
+##predicted survival rate for testing data based on training data
+preds<-predict(result,newdata=test, type="response")
+
+##produce the numbers associated with classification table
+rates<-prediction(preds, test$income)
+
+##store the true positive and false postive rates
+roc_result<-performance(rates,measure="tpr", x.measure="fpr")
+
+##plot ROC curve and overlay the diagonal line for random guessing
+plot(roc_result, main="ROC Curve for Adult")
+lines(x = c(0,1), y = c(0,1), col="red")
+
+##compute the AUC
+auc<-performance(rates, measure = "auc")
+auc
+
+##confusion matrix. Actual values in the rows, predicted classification in cols
+table(test$income, preds>0.5)
+```
+## First model - machine learning
+```{r}
+## first model accuracy from confusion matrix
+(10357+2117)/(10357+911+1696+2117)
+```
+## First model - machine learning
+```{r}
+hist(preds)
+```
+## Test hypothesis 
+#### consider to drop race 
+```{r}
+## Test hypothesis
+##consider to drop race and will adopt test hypothesis
+## check residual deviance to compared with first model 
+droprace <- glm(income ~age+wc+edu_num+occup+sex+hours_w+ edu +rp + marital, family = "binomial", data = data)
+summary(droprace)
+```
+## Test hypothesis - consider to drop race 
+```{r}
+## Test hypothesis
+## p value for dropping race
+1-pchisq(16, 4)
+```
+## Test hopothes- consider to drop hours-per-week 
+## use Wald test
+## Consider to drop hours-per-week due to wide distribution from histogram diagram
+```{r}
+##(1) data cleaning and manipulation
+##Check age histogram colored by 
+library(plyr)
+muHour <- ddply(data, "income", summarise, grp.mean=mean(age))
+head(mu)
+# Change histogram plot fill colors by groups
+ggplot(data, aes(x=hours_w, fill=income, color=income)) +
+  geom_histogram(position="identity")
+# Use semi-transparent fill
+p1<-ggplot(data, aes(x=hours_w, fill=income, color=income)) +
+  geom_histogram(position="identity", alpha=0.5)
+p1
+# Add mean lines
+p1+geom_vline(data=mu, aes(xintercept=grp.mean, color=income),
+             linetype="dashed")
+p1+theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="Histogram on Categorical Variable", 
+       subtitle="Income across hours-per-week")
+```
+## considering to drop hours-per-week
+```{r}
+## Test hypothesis
+#consider to drop hours-per-week
+drophour_w <- glm(income ~age+wc+edu_num+occup+sex+hours_w + marital + race, family = "binomial", data = data)
+summary(drophour_w)  
+```
+##adopt Wald test
+```{r}
+##Test hypothesis calculate test statistic to compare 95% confidence level 
+18.856/0.001543
+##the p-value
+(2 ∗ pnorm(12220.35, lower.tail=FALSE))
+```
+## multicollinearity to drop relationship and eductaion, total predictors for second model is 8
+## Second model
+```{r}
+## second model
+##considering muliconllinearity, drop relationship and education and native country
+m4 <- glm(income ~age+wc+edu_num+occup+sex+hours_w+ marital + race, family = "binomial", data = data)
+summary(m4)
+```
+## Second model-Machine learning 
+```{r}
+##apply ML train/test for simple model (50/50)
+##set the random number generator so same results can be reproduced
+set.seed(2019)
+##choose the observations to be in the training. I am splitting the dataset into halves
+sample<-sample.int(nrow(data), floor(.50*nrow(data)), replace = F)
+train<-data[sample, ]
+test<-data[-sample, ]
+##use training data to fit logistic regression model with fare and gender as predictors
+result<-glm(income ~age+wc+edu_num+occup+sex+hours_w+ marital + race, family = "binomial", data = train)
+library(ROCR)
+##predicted survival rate for testing data based on training data
+preds<-predict(result,newdata=test, type="response")
+
+##produce the numbers associated with classification table
+rates<-prediction(preds, test$income)
+
+##store the true positive and false postive rates
+roc_result<-performance(rates,measure="tpr", x.measure="fpr")
+
+##plot ROC curve and overlay the diagonal line for random guessing
+plot(roc_result, main="ROC Curve for Adult")
+lines(x = c(0,1), y = c(0,1), col="red")
+
+##compute the AUC
+auc<-performance(rates, measure = "auc")
+auc
+
+##confusion matrix. Actual values in the rows, predicted classification in cols
+table(test$income, preds>0.5)
+```
+## Second model-Machine learning 
+```{r}
+## Second model
+#accuracy
+(10319+2092)/(10319+949+1721+2092)
+```
+## Second model  histogram-prediction plot
+```{r}
+## Second model
+hist(preds)
+```
+## Second  
+```{r}
+## Second model 
+##calculate false positive rate and false negative rate of second model
+949/(949+10319)
+1721/(1721+2092)
+```
+
+##Model evaluation - to see train/test split effects on model accuracy/false positive/false negative rates
+
+```{r}
+## Model evaluation
+#Use train/test split 20/80 for simple model
+###apply ML train/test for simple model (20/80)
+##set the random number generator so same results can be reproduced
+set.seed(2019)
+##choose the observations to be in the training. I am splitting the dataset into halves
+sample<-sample.int(nrow(data), floor(.20*nrow(data)), replace = F)
+train<-data[sample, ]
+test<-data[-sample, ]
+##use training data to fit logistic regression model with fare and gender as predictors
+result<-glm(income ~age+wc+edu_num+occup+sex+hours_w+ marital + race, family = "binomial", data = train)
+library(ROCR)
+##predicted survival rate for testing data based on training data
+preds<-predict(result,newdata=test, type="response")
+
+##produce the numbers associated with classification table
+rates<-prediction(preds, test$income)
+
+##store the true positive and false postive rates
+roc_result<-performance(rates,measure="tpr", x.measure="fpr")
+
+##plot ROC curve and overlay the diagonal line for random guessing
+plot(roc_result, main="ROC Curve for Adult")
+lines(x = c(0,1), y = c(0,1), col="red")
+
+##compute the AUC
+auc<-performance(rates, measure = "auc")
+auc
+
+##confusion matrix. Actual values in the rows, predicted classification in cols
+table(test$income, preds>0.5)
+###accuracy
+
+###accuracy
+(16639+3242)/(16639+1383+2866+3242)
+##false positive
+1383/(1383+16639)
+##false negative
+2866/(2866+3242)
+```
+
+
+##Model evaluation - to see train/test split effects on model accuracy/false positive/false negative rates
+  
+ 
+```{r}
+## Model evaluation 
+#Use train/test split 40/60 for simple model
+###apply ML train/test for simple model (40/60)
+##set the random number generator so same results can be reproduced
+set.seed(2019)
+##choose the observations to be in the training. I am splitting the dataset into halves
+sample<-sample.int(nrow(data), floor(.40*nrow(data)), replace = F)
+train<-data[sample, ]
+test<-data[-sample, ]
+##use training data to fit logistic regression model with fare and gender as predictors
+result<-glm(income ~age+wc+edu_num+occup+sex+hours_w+ marital + race, family = "binomial", data = train)
+library(ROCR)
+##predicted survival rate for testing data based on training data
+preds<-predict(result,newdata=test, type="response")
+
+##produce the numbers associated with classification table
+rates<-prediction(preds, test$income)
+
+##store the true positive and false postive rates
+roc_result<-performance(rates,measure="tpr", x.measure="fpr")
+
+##plot ROC curve and overlay the diagonal line for random guessing
+plot(roc_result, main="ROC Curve for Adult")
+lines(x = c(0,1), y = c(0,1), col="red")
+
+##compute the AUC
+auc<-performance(rates, measure = "auc")
+auc
+
+##confusion matrix. Actual values in the rows, predicted classification in cols
+table(test$income, preds>0.5)
+ 
+#Accuracy
+(12388+2537)/(12388+1118+2055+2537)
+##false positive
+1118/(1118+12388)
+##false negative
+2055/(2055+2537)
+```
+
+##Model evaluation - to see train/test split effects on model accuracy/false positive/false negative rates
+```{r}
+## Model evaluation
+#Use train/test split 60/40 for simple model
+###apply ML train/test for simple model (60/40)
+##set the random number generator so same results can be reproduced
+set.seed(2019)
+##choose the observations to be in the training. I am splitting the dataset into halves
+sample<-sample.int(nrow(data), floor(.60*nrow(data)), replace = F)
+train<-data[sample, ]
+test<-data[-sample, ]
+##use training data to fit logistic regression model with fare and gender as predictors
+result<-glm(income ~age+wc+edu_num+occup+sex+hours_w+ marital + race, family = "binomial", data = train)
+library(ROCR)
+##predicted survival rate for testing data based on training data
+preds<-predict(result,newdata=test, type="response")
+
+##produce the numbers associated with classification table
+rates<-prediction(preds, test$income)
+
+##store the true positive and false postive rates
+roc_result<-performance(rates,measure="tpr", x.measure="fpr")
+
+##plot ROC curve and overlay the diagonal line for random guessing
+plot(roc_result, main="ROC Curve for Adult")
+lines(x = c(0,1), y = c(0,1), col="red")
+
+##compute the AUC
+auc<-performance(rates, measure = "auc")
+auc
+
+##confusion matrix. Actual values in the rows, predicted classification in cols
+table(test$income, preds>0.5)
+ 
+#Accuracy
+(8270+1672)/(8270+736+1387+1672)
+##false positive
+736/(736+8270)
+##false negative
+1387/(1387+1672)
+```
+
+##Model Evaluation - to see train/test split effects on model accuracy/false positive/false negative rates
+```{r}
+## Model evaluation
+##Use train/test split 80/20 for simple model
+##set the random number generator so same results can be reproduced
+set.seed(2019)
+##choose the observations to be in the training. I am splitting the dataset into halves
+sample<-sample.int(nrow(data), floor(.80*nrow(data)), replace = F)
+train<-data[sample, ]
+test<-data[-sample, ]
+##use training data to fit logistic regression model with fare and gender as predictors
+result<-glm(income ~age+wc+edu_num+occup+sex+hours_w+ marital + race, family = "binomial", data = train)
+library(ROCR)
+##predicted survival rate for testing data based on training data
+preds<-predict(result,newdata=test, type="response")
+
+##produce the numbers associated with classification table
+rates<-prediction(preds, test$income)
+
+##store the true positive and false postive rates
+roc_result<-performance(rates,measure="tpr", x.measure="fpr")
+
+##plot ROC curve and overlay the diagonal line for random guessing
+plot(roc_result, main="ROC Curve for Adult")
+lines(x = c(0,1), y = c(0,1), col="red")
+
+##compute the AUC
+auc<-performance(rates, measure = "auc")
+auc
+
+##confusion matrix. Actual values in the rows, predicted classification in cols
+table(test$income, preds>0.5)
+ 
+###accuray
+(4174+834)/(4174+355+670+834)
+##false positive
+355/(355+4174)
+##false negative
+670/(670+834)
+```
+
+##Model evaluation - to see train/test split effects on model accuracy/false positive/false negative rates
+```{r}
+## Model evaluation
+##Use train/test split 90/10 for simple model
+##set the random number generator so same results can be reproduced
+set.seed(2019)
+##choose the observations to be in the training. I am splitting the dataset into halves
+sample<-sample.int(nrow(data), floor(.90*nrow(data)), replace = F)
+train<-data[sample, ]
+test<-data[-sample, ]
+##use training data to fit logistic regression model with fare and gender as predictors
+result<-glm(income ~age+wc+edu_num+occup+sex+hours_w+ marital + race, family = "binomial", data = train)
+library(ROCR)
+##predicted survival rate for testing data based on training data
+preds<-predict(result,newdata=test, type="response")
+
+##produce the numbers associated with classification table
+rates<-prediction(preds, test$income)
+
+##store the true positive and false postive rates
+roc_result<-performance(rates,measure="tpr", x.measure="fpr")
+
+##plot ROC curve and overlay the diagonal line for random guessing
+plot(roc_result, main="ROC Curve for Adult")
+lines(x = c(0,1), y = c(0,1), col="red")
+
+##compute the AUC
+auc<-performance(rates, measure = "auc")
+auc
+
+##confusion matrix. Actual values in the rows, predicted classification in cols
+table(test$income, preds>0.5)
+ 
+###accuray
+(2090+431)/(2090+431+174+322)
+##false positive
+174/(174+2090)
+##false negative
+322/(322+431)
+```
+##Model evaluation - to see train/test split effects on model accuracy/false positive/false negative rates
+
+```{r}
+## Model evaluation
+##Use train/test split 95/5 for simple model
+##set the random number generator so same results can be reproduced
+set.seed(2019)
+##choose the observations to be in the training. I am splitting the dataset into halves
+sample<-sample.int(nrow(data), floor(.95*nrow(data)), replace = F)
+train<-data[sample, ]
+test<-data[-sample, ]
+##use training data to fit logistic regression model with fare and gender as predictors
+result<-glm(income ~age+wc+edu_num+occup+sex+hours_w+ marital + race, family = "binomial", data = train)
+library(ROCR)
+##predicted survival rate for testing data based on training data
+preds<-predict(result,newdata=test, type="response")
+
+##produce the numbers associated with classification table
+rates<-prediction(preds, test$income)
+
+##store the true positive and false postive rates
+roc_result<-performance(rates,measure="tpr", x.measure="fpr")
+
+##plot ROC curve and overlay the diagonal line for random guessing
+plot(roc_result, main="ROC Curve for Adult")
+lines(x = c(0,1), y = c(0,1), col="red")
+
+##compute the AUC
+auc<-performance(rates, measure = "auc")
+auc
+
+##confusion matrix. Actual values in the rows, predicted classification in cols
+table(test$income, preds>0.5)
+ 
+###accuray
+(1072+206)/(1072+81+150+206)
+##false positive
+81/(81+1072)
+##false negative
+150/(150+206)
+```
+
+##Model evaluation - to see train/test split effects on model accuracy/false positive/false negative rates
+###making plot for accuracy vs. tranin/test splits
+```{r}
+# A line graph
+##false positive rate  
+dat2<-data.frame(
+  splits = factor(c("20/80", "40/60", "50/50", "60/40", "80/20", "90/10", "95/5")),
+  accuracy =c(82.39, 82.46, 82.30, 82.40, 83.01, 83.36, 84.69)
+)
+ggplot(data=dat2, aes(x=splits, y=accuracy, group=1 )) +
+    geom_line() +     # Set linetype by accuracy
+    geom_point(size=5, fill="orange") +         # Use larger points, fill with white
+    expand_limits(y=c(82, 84)) +                       # Set y range to include 0
+    scale_colour_hue(name="train/test",      # Set legend title
+                     l=30)  +                  # Use darker colors (lightness=30)
+    scale_shape_manual(name="train/test",
+                       values=c(22,20)) +      # Use points with a fill color
+    scale_linetype_discrete(name="train/test") +
+    xlab("train/test splits") + ylab("accuracy") + # Set axis labels
+    ggtitle("Accuracy of different train/test splits") +     # Set title
+    theme_bw() +
+    theme(legend.position=c(.7, .4))           # Position legend inside
+                                               # This must go after theme_bw
+```
+ 
+##Model evaluation - to see train/test split effects on model accuracy/false positive/false negative rates
+###making plot for false positive rate vs. tranin/test splits
+```{r}
+##false positive rate  
+dat2<-data.frame(
+  splits = factor(c("20/80", "40/60", "50/50", "60/40", "80/20", "90/10", "95/5")),
+  accuracy =c(7.673, 8.3, 8, 8.172, 7.8, 7.7, 7.0)
+)
+# Basic line graph with points
+ggplot(data=dat2, aes(x=splits, y=accuracy)) +
+    geom_line() +
+    geom_point()
+
+
+# A line graph
+ggplot(data=dat2, aes(x=splits, y=accuracy, group=1 )) +
+    geom_line() +     # Set linetype by accuracy
+    geom_point(size=5, fill="orange") +         # Use larger points, fill with white
+    expand_limits(y=c(5, 10)) +                       # Set y range to include 0
+    scale_colour_hue(name="train/test",      # Set legend title
+                     l=30)  +                  # Use darker colors (lightness=30)
+    scale_shape_manual(name="train/test",
+                       values=c(22,20)) +      # Use points with a fill color
+    scale_linetype_discrete(name="train/test") +
+    xlab("train/test splits") + ylab("False positive") + # Set axis labels
+    ggtitle("Different train/test splits on false positive") +     # Set title
+    theme_bw() +
+    theme(legend.position=c(.7, .4))           # Position legend inside
+                                               # This must go after theme_bw
+```
+##Model evaluation - to see train/test split effects on model accuracy/false positive/false negative rates
+###making plot for false negative rate vs. tranin/test splits
+
+```{r}
+##false negative rate  
+dat3<-data.frame(
+  splits = factor(c("20/80", "40/60", "50/50", "60/40", "80/20", "90/10", "95/5")),
+  accuracy =c(46.92, 44.75, 45.34, 44, 44.55, 42.76, 42.13)
+)
+# Basic line graph with points
+ggplot(data=dat3, aes(x=splits, y=accuracy)) +
+    geom_line() +
+    geom_point()
+
+
+# A line graph
+ggplot(data=dat3, aes(x=splits, y=accuracy, group=1 )) +
+    geom_line() +     # Set linetype by accuracy
+    geom_point(size=5, fill="orange") +         # Use larger points, fill with white
+    expand_limits(y=c(40, 50)) +                       # Set y range to include 0
+    scale_colour_hue(name="train/test",      # Set legend title
+                     l=30)  +                  # Use darker colors (lightness=30)
+    scale_shape_manual(name="train/test",
+                       values=c(22,20)) +      # Use points with a fill color
+    scale_linetype_discrete(name="train/test") +
+    xlab("train/test splits") + ylab("false negative") + # Set axis labels
+    ggtitle("Different train/test splits on false negative") +     # Set title
+    theme_bw() +
+    theme(legend.position=c(.7, .4))           # Position legend inside
+                                               # This must go after theme_bw
+```
+## Model evaluation
+## Adopt train80%/test20% to see the cutoff at 0.2, 0.5, 0.7 and 0.9
+
+```{r}
+###Use train(80%)/test(20%) split, check cutoff 0.2, 0.5, 0.7, 0.9 
+##set the random number generator so same results can be reproduced
+set.seed(2019)
+##choose the observations to be in the training. I am splitting the dataset into halves
+sample<-sample.int(nrow(data), floor(.80*nrow(data)), replace = F)
+train<-data[sample, ]
+test<-data[-sample, ]
+##use training data to fit logistic regression model with fare and gender as predictors
+result<-glm(income ~age+wc+edu_num+occup+sex+hours_w+ marital + race, family = "binomial", data = train)
+library(ROCR)
+##predicted survival rate for testing data based on training data
+preds<-predict(result,newdata=test, type="response")
+
+##produce the numbers associated with classification table
+rates<-prediction(preds, test$income)
+
+##store the true positive and false postive rates
+roc_result<-performance(rates,measure="tpr", x.measure="fpr")
+
+##plot ROC curve and overlay the diagonal line for random guessing
+plot(roc_result, main="ROC Curve for Adult")
+lines(x = c(0,1), y = c(0,1), col="red")
+
+##compute the AUC
+auc<-performance(rates, measure = "auc")
+auc
+
+hist(preds)
+##confusion matrix. Actual values in the rows, predicted classification in cols
+table(test$income, preds>0.2)
+table(test$income, preds>0.4)
+table(test$income, preds>0.5)
+table(test$income, preds>0.6)
+table(test$income, preds>0.7)
+```
+## Model evaluation
+## calculate accuacy vs different cutoff
+```{r}
+###accuracy for cutoff 0.2
+(3281+1329)/(3281+1329+175+1248)
+#accuracy for cutoff 0.4
+(4008+987)/(4008+987+521+517)
+#accuracy for cutoff 0.5
+(4174+834)/(4174+834+355+670)
+#accuracy for cutoff 0.6
+(4302+682)/(4302+682+227+822)
+#accuracy for cutoff 0.7
+(4398+477)/(4398+477+132+1027)
+```
+## Model evaluation - calculate false positive at different cutoff
+```{r}
+###false positive at varied cutoff
+###false positive for cutoff 0.2
+(1248)/(1248+3281)
+#false positivefor cutoff 0.4
+(521)/(521+4008)
+#false positivefor cutoff 0.5
+(355)/(355+4174)
+#false positive for cutoff 0.6
+(227)/(227+4302)
+#false positive for cutoff 0.7
+(132)/(132+4397)
+```
+## Model evaluation - calculaate false negative at differnt cutoff 
+```{r}
+##false negative at varied cutoff
+###false negative for cutoff 0.2
+(175)/(175+1329)
+#false negativefor cutoff 0.4
+(517)/(517+987)
+#false negative for cutoff 0.5
+(670)/(670+834)
+#false negative for cutoff 0.6
+(822)/(822+682)
+#false negative for cutoff 0.7
+(1027)/(1027+477)
+```
+
+## Model evaluation - making plot: cutoff vs. accuracy
+```{r}
+dat4<-data.frame(
+  cutoff = factor(c(0.2, 0.4, 0.5, 0.6, 0.7)),
+  accuracy =c(76.41, 82.79, 83.01, 82.61, 80.79)
+)
+# A line graph
+ggplot(data=dat4, aes(x=cutoff, y=accuracy, group=1 )) +
+    geom_line() +     # Set linetype by accuracy
+    geom_point(size=5, fill="orange") +         # Use larger points, fill with white
+    expand_limits(y=c(82, 84)) +                # Set y range to include 0
+    scale_colour_hue(name="train/test",         # Set legend title
+                     l=30)  +                   # Use darker colors (lightness=30)
+    scale_shape_manual(name="train/test",
+                       values=c(22,20)) +       # Use points with a fill color
+    scale_linetype_discrete(name="train/test") +
+    xlab("cutoff value") + ylab("accuracy") +   # Set axis labels
+    ggtitle("Accuracy of different cutoff") +   # Set title
+    theme_bw() +
+    theme(legend.position=c(.7, .4))            # Position legend inside
+                                                # This must go after theme_bw
+```
+## Model evaluation - making plot: cutoff vs. false positive
+```{r}
+##plot false positive
+# A line graph
+##plot false positive
+dat5<-data.frame(
+  cutoff = factor(c(0.2, 0.4, 0.5, 0.6, 0.7)),
+  accuracy =c(27.55, 11.50, 7.84, 5.01, 2.91)
+)
+ggplot(data=dat5, aes(x=cutoff, y=accuracy, group=1 )) +
+    geom_line() +     # Set linetype by accuracy
+    geom_point(size=5, fill="orange") +         # Use larger points, fill with white
+    expand_limits(y=c(0, 40)) +                # Set y range to include 0
+    scale_colour_hue(name="train/test",         # Set legend title
+                     l=30)  +                   # Use darker colors (lightness=30)
+    scale_shape_manual(name="train/test",
+                       values=c(22,20)) +       # Use points with a fill color
+    scale_linetype_discrete(name="train/test") +
+    xlab("cutoff value") + ylab("False positive") +   # Set axis labels
+    ggtitle("False positive of different cutoff") +   # Set title
+    theme_bw() +
+    theme(legend.position=c(.7, .4))            # Position legend inside
+                                                # This must go after theme_bw
+```
+## Model evaluation - making plot: cutoff vs. false negative
+```{r}
+##plot false negative
+dat6<-data.frame(
+  cutoff = factor(c(0.2, 0.4, 0.5, 0.6, 0.7)),
+  accuracy =c(11.63, 34.38, 44.55, 54.65, 68.28)
+)
+# A line graph
+ggplot(data=dat6, aes(x=cutoff, y=accuracy, group=1 )) +
+    geom_line() +     # Set linetype by accuracy
+    geom_point(size=5, fill="orange") +         # Use larger points, fill with white
+    expand_limits(y=c(0, 40)) +                # Set y range to include 0
+    scale_colour_hue(name="train/test",         # Set legend title
+                     l=30)  +                   # Use darker colors (lightness=30)
+    scale_shape_manual(name="train/test",
+                       values=c(22,20)) +       # Use points with a fill color
+    scale_linetype_discrete(name="train/test") +
+    xlab("cutoff value") + ylab("False negative") +   # Set axis labels
+    ggtitle("False negative of different cutoff") +   # Set title
+    theme_bw() +
+    theme(legend.position=c(.7, .4))            # Position legend inside
+                                                # This must go after theme_bw
+```
+## K-fold cross validation
+```{r}
+library(tidyverse)
+library(caret)
+```
+## K-fold cross validation
+## set seed 2019 and k=2 to do cross-validation
+```{r}
+set.seed(2019) 
+train.control <- trainControl(method = "cv", number = 2)
+# Train the model
+model <- train(income ~ age+wc+edu_num+occup+sex+hours_w+ marital + race, data = data, method = "glm",
+               trControl = train.control)
+# Summarize the results
+print(model)
+```
+## K-fold cross validation
+## set seed 2019 and k=5 to do cross-validation
+```{r}
+set.seed(2019) 
+train.control <- trainControl(method = "cv", number = 5)
+# Train the model
+model <- train(income ~ age+wc+edu_num+occup+sex+hours_w+ marital + race, data = data, method = "glm",
+               trControl = train.control)
+# Summarize the results
+print(model)
+```
+## K-fold cross validation
+## set seed 2019 and k=10 to do cross-validation
+```{r}
+set.seed(2019) 
+train.control <- trainControl(method = "cv", number = 10)
+# Train the model
+model <- train(income ~ age+wc+edu_num+occup+sex+hours_w+ marital + race, data = data, method = "glm",
+               trControl = train.control)
+# Summarize the results
+print(model)
+```
+## K-fold cross validation
+## set seed 2019 and k=10 to do cross-validation - repeat three times
+```{r}
+# Define training control
+set.seed(2019)
+train.control <- trainControl(method = "repeatedcv", 
+                              number = 10, repeats = 3)
+# Train the model
+model <- train(income ~ age+wc+edu_num+occup+sex+hours_w+ marital + race, data = data, method = "glm",
+               trControl = train.control)
+# Summarize the results
+print(model)
+```
+## K-fold cross validation
+## set seed 2019 and k=500 to do cross-validation 
+```{r}
+set.seed(2019) 
+train.control <- trainControl(method = "cv", number = 500)
+# Train the model
+model <- train(income ~ age+wc+edu_num+occup+sex+hours_w+ marital + race, data = data, method = "glm",
+               trControl = train.control)
+# Summarize the results
+print(model)
+```
+## K-fold cross validation
+## Plot model accuracy vs. k value
+```{r}
+# A line graph
+##false positive rate  
+dat2<-data.frame(
+  splits = factor(c(K=2, K=5, K=10, K=500)),
+  accuracy =c(82.42, 82.45, 82.48, 82.44)
+)
+ggplot(data=dat2, aes(x=splits, y=accuracy, group=1 )) +
+    geom_line() +     # Set linetype by accuracy
+    geom_point(size=5, fill="orange") +         # Use larger points, fill with white
+    expand_limits(y=c(82, 84)) +                       # Set y range to include 0
+    scale_colour_hue(name="cv",      # Set legend title
+                     l=30)  +                  # Use darker colors (lightness=30)
+    scale_shape_manual(name="cv",
+                       values=c(22,20)) +      # Use points with a fill color
+    scale_linetype_discrete(name="train/test") +
+    xlab("K-fold CV") + ylab("Accuracy") + # Set axis labels
+    ggtitle("Model Accuracy vs. K-fold CV") +     # Set title
+    theme_bw() +
+    theme(legend.position=c(.7, .4))           # Position legend inside
+                                               # This must go after theme_bw
+```
+```{r}
+# A line graph
+##false positive rate  
+dat2<-data.frame(
+  splits = factor(c("K=10", "K=10_three times")),
+  accuracy =c(82.45, 82.48)
+)
+ggplot(data=dat2, aes(x=splits, y=accuracy, group=1 )) +
+    geom_line() +     # Set linetype by accuracy
+    geom_point(size=5, fill="orange") +         # Use larger points, fill with white
+    expand_limits(y=c(82, 84)) +                       # Set y range to include 0
+    scale_colour_hue(name="cv",      # Set legend title
+                     l=30)  +                  # Use darker colors (lightness=30)
+    scale_shape_manual(name="cv",
+                       values=c(22,20)) +      # Use points with a fill color
+    scale_linetype_discrete(name="train/test") +
+    xlab("Repeated and non-repeated K-fold CV") + ylab("Accuracy") + # Set axis labels
+    ggtitle("Model Accuracy vs. K-fold CV") +     # Set title
+    theme_bw() +
+    theme(legend.position=c(.7, .4))           # Position legend inside
+                                               # This must go after theme_bw
+```
+
+
+## case study
+```{r}
+###second model: 25 years old, workclass: government,educ-num = 16y, White-collar, female, hours-per-W: 40, married, White
+logodds_2 = -8.8236 + 0.02972*45 + 0 + 0.2989*16 + 0.7873 + 0.02910 *40 -0.4906 + 0.5551
+logodds_2
+exp(logodds_2)
+prob_2 = exp(logodds_2)/(1+exp(logodds_2))
+prob_2
+```
+## case study
+```{r}
+## (2) first model 
+#calculate estimate odds for age while holding all other predictors constant
+#Considering a male at age 40 years old with workclass = government, education number  = 16 years, occupation is White-Collar, hours-per-week is 40 hrs, education is Doctoral, relationship is Wife, maritial-status is married, race is White:
+
+logodds = -7.14719+0.02839* 40 + 0 + 0.2132*16 + 0.8062 + 0.8968 + 0.02912*40 + 0.9703 + 1.3258 + 0.5728 + 0.5270
+logodds
+estimatedodds = exp(logodds)
+prob = estimatedodds/(1+estimatedodds)
+prob 
+
+```
+ 
+  
+ 
